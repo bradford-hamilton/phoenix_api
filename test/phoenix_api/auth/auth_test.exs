@@ -6,9 +6,9 @@ defmodule PhoenixApi.AuthTest do
   describe "users" do
     alias PhoenixApi.Auth.User
 
-    @valid_attrs %{email: "some email", is_active: true}
-    @update_attrs %{email: "some updated email", is_active: false}
-    @invalid_attrs %{email: nil, is_active: nil}
+    @valid_attrs %{email: "some email", is_active: true, password: "super secure"}
+    @update_attrs %{email: "some updated email", is_active: false, password: "updated secure"}
+    @invalid_attrs %{email: nil, is_active: nil, password: nil}
 
     def user_fixture(attrs \\ %{}) do
       {:ok, user} =
@@ -21,18 +21,19 @@ defmodule PhoenixApi.AuthTest do
 
     test "list_users/0 returns all users" do
       user = user_fixture()
-      assert Auth.list_users() == [user]
+      assert Auth.list_users() == [%User{user | password: nil}]
     end
 
     test "get_user!/1 returns the user with given id" do
       user = user_fixture()
-      assert Auth.get_user!(user.id) == user
+      assert Auth.get_user!(user.id) == %User{user | password: nil}
     end
 
     test "create_user/1 with valid data creates a user" do
       assert {:ok, %User{} = user} = Auth.create_user(@valid_attrs)
       assert user.email == "some email"
       assert user.is_active == true
+      assert Bcrypt.verify_pass("super secure", user.password_hash)
     end
 
     test "create_user/1 with invalid data returns error changeset" do
@@ -45,12 +46,14 @@ defmodule PhoenixApi.AuthTest do
       assert %User{} = user
       assert user.email == "some updated email"
       assert user.is_active == false
+      assert Bcrypt.verify_pass("updated secure", user.password_hash)
     end
 
     test "update_user/2 with invalid data returns error changeset" do
       user = user_fixture()
       assert {:error, %Ecto.Changeset{}} = Auth.update_user(user, @invalid_attrs)
-      assert user == Auth.get_user!(user.id)
+      assert %User{user | password: nil} == Auth.get_user!(user.id)
+      assert Bcrypt.verify_pass("super secure", user.password_hash)
     end
 
     test "delete_user/1 deletes the user" do
